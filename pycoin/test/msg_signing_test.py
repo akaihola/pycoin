@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import print_function, unicode_literals
 import unittest
 
 def test_against_myself():
@@ -21,7 +22,7 @@ def test_against_myself():
         k = Key(secret_exponent=se, is_compressed=comp)
         assert k.address() == right_addr
 
-        print "\nAddr %s compressed=%s" % (right_addr, comp)
+        print("\nAddr %s compressed=%s" % (right_addr, comp))
 
         vk = Key(public_pair=k.public_pair(), is_compressed=comp)
         assert vk.address() == right_addr
@@ -33,7 +34,7 @@ def test_against_myself():
         for i in range(1, 30, 10):
             msg = 'test message %s' % ('A'*i)
             sig = k.sign_message(msg, verbose=1)
-            print sig
+            print(sig)
             assert right_addr in sig
 
             # check parsing works
@@ -47,7 +48,7 @@ def test_against_myself():
             assert s == sig2, s
 
             ok = vk.verify_message(sig2, msg)
-            print "verifies: %s" % ("Ok" if ok else "WRONG")
+            print("verifies: %s" % ("Ok" if ok else "WRONG"))
             assert ok
 
             assert vk2.verify_message(sig2, msg)

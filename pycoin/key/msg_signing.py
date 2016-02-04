@@ -1,4 +1,5 @@
-import io, os, hashlib, hmac, re
+from __future__ import unicode_literals
+import io, os, hashlib, hmac, re, struct
 from binascii import b2a_base64, a2b_base64
 from pycoin import ecdsa
 from pycoin.ecdsa import ellipticcurve, intbytes, numbertheory
@@ -42,7 +43,8 @@ def parse_signed_message(msg_in):
         raise ValueError("expected BEGIN SIGNATURE line", body)
 
     # after message, expect something like an email/http headers, so split into lines
-    hdr = filter(None, [i.strip() for i in hdr.split('\n')])
+    # note: wrapped in a list() call for Python 3 compatibility
+    hdr = list(filter(None, [i.strip() for i in hdr.split('\n')]))
 
     if '-----END' not in hdr[-1]:
         raise ValueError("expecting END on last line")
@@ -107,7 +109,9 @@ class MsgSigningMixin(object):
         #                  add 0x04 for compressed keys.
 
         first = 27 + y_odd + (4 if is_compressed else 0)
-        sig = b2a_base64(chr(first) + to_bytes_32(r) + to_bytes_32(s)).strip()
+        # Note: using struct.pack() to get a bytestring in a Python 2 & 3
+        # compatible way
+        sig = b2a_base64(struct.pack('b', first) + to_bytes_32(r) + to_bytes_32(s)).strip().decode('ASCII')
 
         if not verbose or message == None:
             return sig
@@ -197,8 +201,8 @@ def _decode_signature(signature):
     if len(sig) != 65:
         raise ValueError("Wrong length, expected 65")
 
-    # split into the parts.
-    first = ord(sig[0])
+    # split into the parts. Use struct.unpack() for Python 3 compatibility.
+    first = struct.unpack('b', sig[:1])[0]
     r = from_bytes_32(sig[1:33])
     s = from_bytes_32(sig[33:33+32])
 
@@ -237,7 +241,8 @@ def _extract_public_pair(generator, recid, r, s, value):
     order = G.order()
     p = curve.p()
 
-    x = r + (n * (recid / 2))
+    # Note: using // as integer division for Python 3 compatibility
+    x = r + (n * (recid // 2))
 
     alpha = ( pow(x,3,p)  + curve.a() * x + curve.b() ) % p
     beta = numbertheory.modular_sqrt(alpha, p)
@@ -263,9 +268,9 @@ def hash_for_signing(msg, netcode='BTC'):
     magic = msg_magic_for_netcode(netcode)
     fd = io.BytesIO()
 
-    stream_bc_string(fd, magic)
-    stream_bc_string(fd, msg)
-    
+    stream_bc_string(fd, magic.encode('ASCII'))
+    stream_bc_string(fd, msg.encode('ASCII'))
+
     # return as a number, since it's an input to signing algos like that anyway
     return from_bytes_32(double_sha256(fd.getvalue()))
 
